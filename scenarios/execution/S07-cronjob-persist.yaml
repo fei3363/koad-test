@@ -1,0 +1,39 @@
+# KOAD-S07: CronJob Persistence
+# ATT&CK: T1053 — Scheduled Task/Job
+# Attack: Create CronJob for periodic malicious execution (simulated miner)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: system-metrics-collector
+  namespace: koad
+  labels:
+    koad-scenario: S07
+    mitre-attck: T1053
+  annotations:
+    description: "Disguised as metrics collector — actually simulates periodic C2 callback"
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: system-metrics
+            koad-scenario: S07
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: curlimages/curl:latest
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  echo "[KOAD-S07] Simulated C2 callback at $(date)"
+                  echo "In a real attack, this would:"
+                  echo "  - Phone home to C2 server"
+                  echo "  - Execute downloaded payloads"
+                  echo "  - Exfiltrate collected data"
+                  echo "  - Run cryptominer workloads"

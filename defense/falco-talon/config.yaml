@@ -1,0 +1,89 @@
+# KOAD Falco Talon — Automated Response Configuration
+# Responds to Falco alerts with containment actions
+
+listenAddress: 0.0.0.0
+listenPort: 2803
+
+defaultNotifiers:
+  - k8s
+
+rules:
+  # Isolate pods running cryptominers
+  - name: Isolate Cryptominer
+    match:
+      rules:
+        - "KOAD S35 Cryptominer Process"
+      priority: critical
+    actions:
+      - action: Label Pod
+        parameters:
+          labels:
+            quarantine: "true"
+      - action: NetworkPolicy
+        parameters:
+          allow:
+            - "127.0.0.1/32"
+
+  # Terminate privileged escape attempts
+  - name: Terminate Escape Pod
+    match:
+      rules:
+        - "KOAD S13 Privileged Container Started"
+        - "KOAD S14 Cgroup Manipulation"
+        - "KOAD S15 Docker Socket Access"
+        - "KOAD S16 Core Pattern Modified"
+        - "KOAD S17 Ptrace in Container"
+        - "KOAD S18 Device Node Created"
+      priority: critical
+    actions:
+      - action: Terminate Pod
+        parameters:
+          gracePeriodSeconds: 0
+
+  # Log and alert on brute force
+  - name: Alert Brute Force
+    match:
+      rules:
+        - "KOAD S24 Brute Force Attempt"
+      priority: critical
+    actions:
+      - action: Label Pod
+        parameters:
+          labels:
+            security-alert: brute-force
+
+  # Isolate lateral movement
+  - name: Isolate Lateral Movement
+    match:
+      rules:
+        - "KOAD S30 Cross-Namespace Secret Access"
+      priority: critical
+    actions:
+      - action: NetworkPolicy
+        parameters:
+          allow: []
+
+  # Alert on RBAC manipulation
+  - name: Alert RBAC Change
+    match:
+      rules:
+        - "KOAD S09 ClusterRoleBinding Created"
+        - "KOAD S10 ServiceAccount in kube-system"
+      priority: critical
+    actions:
+      - action: Label Pod
+        parameters:
+          labels:
+            security-alert: rbac-manipulation
+
+  # Protect security tools
+  - name: Alert Security Tool Deletion
+    match:
+      rules:
+        - "KOAD S23 Security Tool Deletion"
+      priority: critical
+    actions:
+      - action: Label Pod
+        parameters:
+          labels:
+            security-alert: defense-impairment

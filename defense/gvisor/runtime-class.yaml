@@ -1,0 +1,32 @@
+# gVisor RuntimeClass for sandbox isolation
+# Defense against container escape scenarios (S13-S19)
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+scheduling:
+  nodeSelector:
+    runtime: gvisor
+---
+# Example Pod using gVisor sandbox
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gvisor-sandbox-demo
+  namespace: koad-defense
+  labels:
+    koad-defense: gvisor
+spec:
+  runtimeClassName: gvisor
+  containers:
+    - name: sandboxed-app
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]

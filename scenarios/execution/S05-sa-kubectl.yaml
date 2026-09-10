@@ -1,0 +1,63 @@
+# KOAD-S05: ServiceAccount with kubectl access
+# ATT&CK: T1609 — Container Administration Command
+# Attack: Compromised Pod with overprivileged SA → kubectl control
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: overprivileged-sa
+  namespace: koad
+  labels:
+    koad-scenario: S05
+    mitre-attck: T1609
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: koad-overprivileged-binding
+  labels:
+    koad-scenario: S05
+subjects:
+  - kind: ServiceAccount
+    name: overprivileged-sa
+    namespace: koad
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubectl-pod
+  namespace: koad
+  labels:
+    app: kubectl-pod
+    koad-scenario: S05
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubectl-pod
+  template:
+    metadata:
+      labels:
+        app: kubectl-pod
+        koad-scenario: S05
+    spec:
+      serviceAccountName: overprivileged-sa
+      containers:
+        - name: kubectl
+          image: bitnami/kubectl:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S05: kubectl from compromised Pod ==="
+              echo "ServiceAccount: overprivileged-sa (cluster-admin)"
+              echo ""
+              echo "Try:"
+              echo "  kubectl get pods -A"
+              echo "  kubectl get secrets -A"
+              echo "  kubectl get nodes"
+              echo "  kubectl auth can-i --list"
+              sleep infinity

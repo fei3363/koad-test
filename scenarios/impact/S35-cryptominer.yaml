@@ -1,0 +1,60 @@
+# KOAD-S35: Resource Hijacking — Cryptominer
+# ATT&CK: T1496 — Resource Hijacking
+# Attack: XMRig cryptominer disguised as legitimate Deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-agent
+  namespace: koad
+  labels:
+    app: monitoring-agent
+    koad-scenario: S35
+    mitre-attck: T1496
+  annotations:
+    description: "Disguised as monitoring agent — actually simulates a cryptominer"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-agent
+  template:
+    metadata:
+      labels:
+        app: monitoring-agent
+        koad-scenario: S35
+    spec:
+      containers:
+        - name: agent
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S35: Cryptominer (Simulated) ==="
+              echo ""
+              echo "This Pod simulates XMRig cryptominer behavior:"
+              echo "  - Disguised as 'monitoring-agent'"
+              echo "  - Would connect to mining pool on port 3333/5555"
+              echo "  - Consumes CPU resources for mining"
+              echo ""
+              echo "Real attack deployment would look like:"
+              echo "  image: xmrig/xmrig"
+              echo "  args: ['--url=pool.example.com:3333', '--user=wallet', '--pass=x']"
+              echo ""
+              echo "Detection signals:"
+              echo "  - High CPU usage with no corresponding business metrics"
+              echo "  - Outbound connections to known mining pools"
+              echo "  - Stratum protocol traffic (port 3333/5555)"
+              echo ""
+              echo "Simulating CPU activity..."
+              while true; do
+                echo "[$(date)] Heartbeat — miner simulation active"
+                sleep 60
+              done
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

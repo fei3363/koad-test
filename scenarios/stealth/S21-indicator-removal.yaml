@@ -1,0 +1,41 @@
+# KOAD-S21: Indicator Removal
+# ATT&CK: T1070 — Indicator Removal
+# Attack: Delete bash_history, Pod logs, K8s Events to cover tracks
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: indicator-remover
+  namespace: koad
+  labels:
+    koad-scenario: S21
+    mitre-attck: T1070
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: cleaner
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S21: Indicator Removal ==="
+          echo ""
+          echo "Attack — remove evidence:"
+          echo ""
+          echo "  1. Clear shell history:"
+          echo "     history -c && rm -f ~/.bash_history ~/.ash_history"
+          echo ""
+          echo "  2. Clear container logs:"
+          echo "     : > /var/log/*.log 2>/dev/null"
+          echo ""
+          echo "  3. Delete K8s Events (removes audit trail):"
+          echo "     kubectl delete events --all -n koad"
+          echo ""
+          echo "  4. Delete completed attack Pods:"
+          echo "     kubectl delete pod -n koad -l purpose=attack"
+          echo ""
+          echo "  5. Truncate audit logs on host (if escaped):"
+          echo "     : > /var/log/kubernetes/audit.log"
+          echo ""
+          echo "Detection: Falco rule for history file deletion"
+          sleep infinity

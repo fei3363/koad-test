@@ -1,0 +1,51 @@
+# KOAD-S32: Resource Bomb — Endpoint Denial of Service
+# ATT&CK: T1499 — Endpoint Denial of Service
+# Attack: Deploy Pods that consume all CPU/Memory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-bomb
+  namespace: koad
+  labels:
+    app: resource-bomb
+    koad-scenario: S32
+    mitre-attck: T1499
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resource-bomb
+  template:
+    metadata:
+      labels:
+        app: resource-bomb
+        koad-scenario: S32
+    spec:
+      containers:
+        - name: bomb
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S32: Resource Bomb ==="
+              echo "This Pod requests excessive resources."
+              echo ""
+              echo "Attack: Scale to consume all cluster resources"
+              echo "  kubectl scale deploy resource-bomb -n koad --replicas=100"
+              echo ""
+              echo "Or deploy a CPU stress test:"
+              echo "  while true; do :; done"
+              echo ""
+              echo "Or deploy a memory bomb:"
+              echo "  tail /dev/zero"
+              echo ""
+              echo "Defense: ResourceQuota + LimitRange"
+              sleep infinity
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

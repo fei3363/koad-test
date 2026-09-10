@@ -1,0 +1,18 @@
+# KOAD Attacker Pod — 執行自動化攻擊鏈
+# 使用 S09 建立的 attacker-sa（cluster-admin）
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: attacker
+  namespace: koad
+  labels:
+    app: attacker
+    koad-scenario: attacker-chain
+spec:
+  serviceAccountName: attacker-sa
+  containers:
+    - name: attacker
+      image: koad/attacker:latest
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "infinity"]

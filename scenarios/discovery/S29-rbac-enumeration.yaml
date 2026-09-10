@@ -1,0 +1,43 @@
+# KOAD-S29: Permission Groups Discovery
+# ATT&CK: T1069 — Permission Groups Discovery
+# Attack: Enumerate RBAC roles, bindings, and permissions
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rbac-enumerator
+  namespace: koad
+  labels:
+    koad-scenario: S29
+    mitre-attck: T1069
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: enumerator
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S29: RBAC Permission Enumeration ==="
+          echo ""
+          echo "--- Current Permissions ---"
+          kubectl auth can-i --list 2>/dev/null | head -30
+          echo ""
+          echo "--- ClusterRoles ---"
+          kubectl get clusterroles --no-headers 2>/dev/null | head -20
+          echo ""
+          echo "--- ClusterRoleBindings ---"
+          kubectl get clusterrolebindings --no-headers 2>/dev/null | head -20
+          echo ""
+          echo "--- Roles (all namespaces) ---"
+          kubectl get roles -A --no-headers 2>/dev/null | head -20
+          echo ""
+          echo "--- RoleBindings (all namespaces) ---"
+          kubectl get rolebindings -A --no-headers 2>/dev/null | head -20
+          echo ""
+          echo "--- High-privilege bindings (cluster-admin) ---"
+          kubectl get clusterrolebindings -o json 2>/dev/null | \
+            grep -B5 '"cluster-admin"' 2>/dev/null | head -30
+          echo ""
+          echo "RBAC enumeration complete."
+          sleep infinity

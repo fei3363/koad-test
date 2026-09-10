@@ -1,0 +1,44 @@
+# KOAD-S27: Container and Resource Discovery
+# ATT&CK: T1613 — Container and Resource Discovery
+# Attack: Enumerate all cluster resources with kubectl
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-scanner
+  namespace: koad
+  labels:
+    koad-scenario: S27
+    mitre-attck: T1613
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: scanner
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S27: Cluster Resource Discovery ==="
+          echo ""
+          echo "Enumerating cluster resources..."
+          echo ""
+          echo "--- Namespaces ---"
+          kubectl get namespaces 2>/dev/null || echo "Permission denied"
+          echo ""
+          echo "--- Pods (all namespaces) ---"
+          kubectl get pods -A --no-headers 2>/dev/null | head -20 || echo "Permission denied"
+          echo ""
+          echo "--- Nodes ---"
+          kubectl get nodes -o wide 2>/dev/null || echo "Permission denied"
+          echo ""
+          echo "--- ServiceAccounts ---"
+          kubectl get sa -A --no-headers 2>/dev/null | head -20 || echo "Permission denied"
+          echo ""
+          echo "--- Secrets ---"
+          kubectl get secrets -A --no-headers 2>/dev/null | head -20 || echo "Permission denied"
+          echo ""
+          echo "--- Services ---"
+          kubectl get svc -A --no-headers 2>/dev/null | head -20 || echo "Permission denied"
+          echo ""
+          echo "Full enumeration complete. Use 'kubectl exec' for interactive exploration."
+          sleep infinity

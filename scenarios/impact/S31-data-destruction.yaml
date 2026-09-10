@@ -1,0 +1,83 @@
+# KOAD-S31: Data Destruction
+# ATT&CK: T1485 — Data Destruction
+# Attack: kubectl delete deployments and PVCs to destroy workloads and data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: important-data
+  namespace: koad
+  labels:
+    koad-scenario: S31
+    mitre-attck: T1485
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: critical-app
+  namespace: koad
+  labels:
+    app: critical-app
+    koad-scenario: S31
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: critical-app
+  template:
+    metadata:
+      labels:
+        app: critical-app
+        koad-scenario: S31
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Critical application data" > /data/important.txt
+              echo "This represents production data that could be destroyed"
+              sleep infinity
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: important-data
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: data-destroyer
+  namespace: koad
+  labels:
+    koad-scenario: S31
+spec:
+  serviceAccountName: overprivileged-sa
+  containers:
+    - name: destroyer
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S31: Data Destruction ==="
+          echo ""
+          echo "WARNING: These commands destroy data!"
+          echo ""
+          echo "Attack commands:"
+          echo "  kubectl delete deploy critical-app -n koad"
+          echo "  kubectl delete pvc important-data -n koad"
+          echo "  kubectl delete deploy --all -n koad-production"
+          echo "  kubectl delete pvc --all -n koad-production"
+          echo ""
+          echo "Detection:"
+          echo "  Audit log: verb=delete resource=deployments/persistentvolumeclaims"
+          sleep infinity

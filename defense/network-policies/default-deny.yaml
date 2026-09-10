@@ -1,0 +1,82 @@
+# KOAD Default Deny NetworkPolicies
+# Defense: Restrict all traffic by default, allow explicitly
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: koad
+  labels:
+    koad-defense: "true"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow DNS resolution
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: koad
+  labels:
+    koad-defense: "true"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Allow SSRF webapp ingress (for demo)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ssrf-webapp-ingress
+  namespace: koad
+  labels:
+    koad-defense: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: ssrf-webapp
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 5000
+---
+# Block metadata API access (defense for S01)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-metadata-api
+  namespace: koad
+  labels:
+    koad-defense: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: ssrf-webapp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443

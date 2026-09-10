@@ -1,0 +1,91 @@
+# KOAD Kubernetes Audit Policy
+# Comprehensive auditing for ATT&CK detection
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Log all changes to RBAC (S09, S10)
+  - level: RequestResponse
+    resources:
+      - group: "rbac.authorization.k8s.io"
+        resources:
+          - clusterroles
+          - clusterrolebindings
+          - roles
+          - rolebindings
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log all Secret access (S03, S25, S26)
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets"]
+
+  # Log Pod creation/deletion (S06, S08, S22, S31)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods"]
+      - group: "apps"
+        resources: ["deployments", "daemonsets", "replicasets"]
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log CronJob changes (S07, S33)
+  - level: RequestResponse
+    resources:
+      - group: "batch"
+        resources: ["cronjobs", "jobs"]
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log ServiceAccount operations (S10)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["serviceaccounts"]
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log Webhook configurations (S11)
+  - level: RequestResponse
+    resources:
+      - group: "admissionregistration.k8s.io"
+        resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log ConfigMap changes
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["configmaps"]
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log exec/attach to pods (S04, S05)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods/exec", "pods/attach"]
+
+  # Log namespace operations
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["namespaces"]
+    verbs: ["create", "delete"]
+
+  # Log PV/PVC operations (S31)
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["persistentvolumes", "persistentvolumeclaims"]
+    verbs: ["create", "delete"]
+
+  # Log auth checks (S29)
+  - level: Metadata
+    resources:
+      - group: "authorization.k8s.io"
+        resources: ["selfsubjectaccessreviews", "selfsubjectrulesreviews"]
+
+  # Default: log metadata for everything else
+  - level: Metadata
+    omitStages:
+      - "RequestReceived"

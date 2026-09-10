@@ -1,0 +1,47 @@
+# KOAD-S28: Network Service Discovery
+# ATT&CK: T1046 — Network Service Discovery
+# Attack: nmap scan of Service CIDR, Pod CIDR, Node ports
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: network-scanner
+  namespace: koad
+  labels:
+    koad-scenario: S28
+    mitre-attck: T1046
+spec:
+  containers:
+    - name: scanner
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          apt-get update -qq && apt-get install -y -qq nmap dnsutils curl iproute2 2>/dev/null
+          echo "=== KOAD-S28: Network Service Discovery ==="
+          echo ""
+          echo "--- Network Info ---"
+          ip addr show 2>/dev/null | grep inet
+          echo ""
+          echo "--- DNS Discovery ---"
+          nslookup kubernetes.default.svc.cluster.local 2>/dev/null || true
+          echo ""
+          echo "--- Service CIDR Scan ---"
+          echo "Run: nmap -sT -p 80,443,8080,8443,6443,2379,10250,10255 10.96.0.0/16"
+          echo ""
+          echo "--- Pod CIDR Scan ---"
+          echo "Run: nmap -sT -p 1-1024 10.244.0.0/16"
+          echo ""
+          echo "--- Node Port Scan ---"
+          echo "Run: nmap -sT -p 30000-32767 \$NODE_IP"
+          echo ""
+          echo "--- Kubernetes API Discovery ---"
+          curl -sk https://kubernetes.default:443/api/v1 2>/dev/null | head -5
+          echo ""
+          echo "Scanner ready. Use 'kubectl exec' for interactive scanning."
+          sleep infinity
+      env:
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP

@@ -1,0 +1,62 @@
+# KOAD-S08: Phishing — Fake Monitoring Tool
+# ATT&CK: T1204 — User Execution
+# Attack: Malicious Pod disguised as a legitimate monitoring tool
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-node-monitor
+  namespace: koad
+  labels:
+    app: prometheus-node-monitor
+    koad-scenario: S08
+    mitre-attck: T1204
+  annotations:
+    description: |
+      This looks like a legitimate Prometheus component but
+      actually runs a reverse shell payload.
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-node-monitor
+  template:
+    metadata:
+      labels:
+        app: prometheus-node-monitor
+        koad-scenario: S08
+    spec:
+      containers:
+        - name: monitor
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S08: Fake Monitoring Tool ==="
+              echo "Pod disguised as prometheus-node-monitor"
+              echo "In a real attack, this would:"
+              echo "  1. Look like a legit monitoring pod"
+              echo "  2. Actually run a reverse shell or data exfiltrator"
+              echo "  3. Use official-looking labels and names"
+              sleep infinity
+          ports:
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-node-monitor
+  namespace: koad
+  labels:
+    koad-scenario: S08
+spec:
+  selector:
+    app: prometheus-node-monitor
+  ports:
+    - port: 9090
+      name: metrics

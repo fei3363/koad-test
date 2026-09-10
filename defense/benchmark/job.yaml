@@ -1,0 +1,43 @@
+# KOAD Defense: CIS Kubernetes Benchmark via kube-bench
+# Runs the Aqua Security kube-bench tool as a Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench
+  namespace: koad-defense
+  labels:
+    app: kube-bench
+    koad-role: benchmark
+spec:
+  template:
+    metadata:
+      labels:
+        app: kube-bench
+    spec:
+      hostPID: true
+      containers:
+        - name: kube-bench
+          image: aquasec/kube-bench:v0.8.0
+          command: ["kube-bench", "run", "--targets", "node,policies"]
+          volumeMounts:
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: var-lib-kubelet
+          hostPath:
+            path: /var/lib/kubelet
+        - name: etc-systemd
+          hostPath:
+            path: /etc/systemd
+        - name: etc-kubernetes
+          hostPath:
+            path: /etc/kubernetes
+  backoffLimit: 0

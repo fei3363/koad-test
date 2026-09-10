@@ -1,0 +1,39 @@
+# KOAD-S22: Masquerading
+# ATT&CK: T1036 — Masquerading
+# Attack: Pod named as system component to blend into kube-system
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-proxy-8x7k2
+  namespace: koad
+  labels:
+    k8s-app: kube-proxy
+    koad-scenario: S22
+    mitre-attck: T1036
+  annotations:
+    description: "Fake kube-proxy — actually a reverse shell"
+spec:
+  containers:
+    - name: kube-proxy
+      image: busybox:1.36
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "=== KOAD-S22: Masquerading as kube-proxy ==="
+          echo ""
+          echo "This Pod is disguised as a kube-proxy component:"
+          echo "  - Name: kube-proxy-8x7k2 (matches DaemonSet naming)"
+          echo "  - Namespace: kube-system"
+          echo "  - Label: k8s-app=kube-proxy"
+          echo ""
+          echo "In a real attack, this would:"
+          echo "  - Run a reverse shell or C2 beacon"
+          echo "  - Exfiltrate data from the cluster"
+          echo "  - Use kube-system privileges to access secrets"
+          echo ""
+          echo "Detection:"
+          echo "  - Compare running pods vs DaemonSet expected pods"
+          echo "  - Check image hash against known kube-proxy images"
+          echo "  - Falco rule for unexpected containers in kube-system"
+          sleep infinity

@@ -1,0 +1,60 @@
+# KOAD-S34: Network Denial of Service
+# ATT&CK: T1498 — Network Denial of Service
+# Attack: Deploy many Pods to exhaust Service CIDR / iptables rules
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-flood
+  namespace: koad
+  labels:
+    app: network-flood
+    koad-scenario: S34
+    mitre-attck: T1498
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: network-flood
+  template:
+    metadata:
+      labels:
+        app: network-flood
+        koad-scenario: S34
+    spec:
+      containers:
+        - name: flooder
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== KOAD-S34: Network DoS ==="
+              echo ""
+              echo "Attack 1 — Exhaust Service CIDR:"
+              echo "  for i in \$(seq 1 1000); do"
+              echo "    kubectl expose deploy network-flood --name=svc-\$i --port=80 -n koad"
+              echo "  done"
+              echo ""
+              echo "Attack 2 — iptables rule flood:"
+              echo "  Each Service creates iptables rules"
+              echo "  Thousands of rules slow packet processing"
+              echo ""
+              echo "Attack 3 — Pod IP exhaustion:"
+              echo "  kubectl scale deploy network-flood --replicas=500 -n koad"
+              echo ""
+              echo "Defense: ResourceQuota on Services, NetworkPolicy, Pod CIDR sizing"
+              sleep infinity
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: network-flood
+  namespace: koad
+  labels:
+    koad-scenario: S34
+spec:
+  selector:
+    app: network-flood
+  ports:
+    - port: 80
+      targetPort: 80

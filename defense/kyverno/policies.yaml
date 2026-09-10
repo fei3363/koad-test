@@ -1,0 +1,173 @@
+# KOAD Kyverno Policies
+# Defense policies covering key ATT&CK scenarios
+---
+# Block privileged containers (defends S06, S13)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-block-privileged
+  labels:
+    koad-defense: "true"
+  annotations:
+    policies.kyverno.io/title: Block Privileged Containers
+    policies.kyverno.io/description: Prevents deployment of privileged containers
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: deny-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: "!true"
+---
+# Block hostPath mounts (defends S13, S15, S16)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-block-hostpath
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: deny-hostpath
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "HostPath volumes are not allowed."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.volumes[?hostPath] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+---
+# Block hostPID/hostNetwork (defends S06, S17)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-block-host-namespaces
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: deny-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Host PID and host network are not allowed."
+        pattern:
+          spec:
+            =(hostPID): false
+            =(hostNetwork): false
+            =(hostIPC): false
+---
+# Require image from trusted registry (defends S12)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-require-trusted-registry
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: trusted-registry
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Images must come from a trusted registry."
+        pattern:
+          spec:
+            containers:
+              - image: "docker.io/* | gcr.io/* | registry.k8s.io/* | ghcr.io/* | koad/*"
+---
+# Require non-root (defends S13-S19)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-require-run-as-nonroot
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: run-as-nonroot
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must run as non-root."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  runAsNonRoot: true
+---
+# Disable automount SA token (defends S05, S26)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-disable-automount-sa
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: disable-automount
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "automountServiceAccountToken should be set to false."
+        pattern:
+          spec:
+            automountServiceAccountToken: false
+---
+# Drop all capabilities (defends S17, S18)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: koad-drop-capabilities
+  labels:
+    koad-defense: "true"
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must drop all capabilities."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
