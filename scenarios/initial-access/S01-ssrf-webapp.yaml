@@ -86,6 +86,8 @@ kind: Service
 metadata:
   name: mock-metadata
   namespace: koad
+  labels:
+    koad-scenario: S01
 spec:
   selector:
     app: mock-metadata

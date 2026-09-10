@@ -58,6 +58,7 @@ spec:
       containers:
         - name: deployer
           image: bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
           command: ["sh", "-c"]
           args:
             - |

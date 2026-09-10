@@ -15,6 +15,7 @@ spec:
   containers:
     - name: disabler
       image: bitnami/kubectl:latest
+      imagePullPolicy: IfNotPresent
       command: ["sh", "-c"]
       args:
         - |

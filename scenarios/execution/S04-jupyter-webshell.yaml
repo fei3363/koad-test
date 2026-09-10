@@ -25,6 +25,7 @@ spec:
       containers:
         - name: jupyter
           image: jupyter/base-notebook:latest
+          imagePullPolicy: IfNotPresent
           args: ["start-notebook.sh", "--NotebookApp.token=''", "--NotebookApp.password=''"]
           ports:
             - containerPort: 8888

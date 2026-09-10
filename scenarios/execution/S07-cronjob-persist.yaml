@@ -28,6 +28,7 @@ spec:
           containers:
             - name: collector
               image: curlimages/curl:latest
+              imagePullPolicy: IfNotPresent
               command: ["/bin/sh", "-c"]
               args:
                 - |

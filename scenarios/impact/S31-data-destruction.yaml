@@ -65,6 +65,7 @@ spec:
   containers:
     - name: destroyer
       image: bitnami/kubectl:latest
+      imagePullPolicy: IfNotPresent
       command: ["sh", "-c"]
       args:
         - |

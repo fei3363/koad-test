@@ -15,6 +15,7 @@ spec:
   containers:
     - name: scanner
       image: bitnami/kubectl:latest
+      imagePullPolicy: IfNotPresent
       command: ["sh", "-c"]
       args:
         - |
