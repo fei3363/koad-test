@@ -1,0 +1,27 @@
+# Block access to cloud Metadata API (169.254.169.254)
+# Prevents SSRF → Metadata → IAM credential theft
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-metadata-api
+  namespace: koad
+spec:
+  podSelector:
+    matchLabels:
+      app: ssrf-webapp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
